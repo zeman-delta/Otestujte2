@@ -8,6 +8,11 @@ class Program
     }
 }
 
+public interface ISaleFetcher
+{
+    decimal FetchSale(string code);
+}
+
 // Jednoduchá reprezentace položky v košíku
 public class OrderItem
 {
@@ -29,9 +34,17 @@ public class OrderService
     private const decimal DISOUNT_THRESHOLD = 2000m; // Hranice pro slevu
     private const decimal FREE_SHIPPING_THRESHOLD = 500m; // Hranice pro dopravu zdarma
     private const decimal SHIPPING_COST = 99m; // Cena dopravy
-    private const decimal DISCOUNT_RATE = 0.90m; // 10% sleva
+    private const decimal DISCOUNT = 0.10m; // 10% sleva
     
-    public decimal CalculateFinalPrice(List<OrderItem> items)
+    private readonly ISaleFetcher _saleFetcher;
+        
+    // Konstruktor pro Dependency Injection
+    public OrderService(ISaleFetcher saleFetcher)
+    {
+        _saleFetcher = saleFetcher;
+    }
+    
+    public decimal CalculateFinalPrice(List<OrderItem> items, string code)
     {
         // 1. Validace vstupů
         if (items == null || items.Count == 0)
@@ -57,11 +70,18 @@ public class OrderService
 
             total += item.Price * item.Quantity;
         }
+        
+        decimal sale = _saleFetcher.FetchSale(code);
 
         // 3. Aplikace slevy (pokud je nákup nad 2000)
         if (total > DISOUNT_THRESHOLD)
         {
-            total *= DISCOUNT_RATE;
+            sale += DISCOUNT;
+        }
+
+        if (sale != 0)
+        {
+            total -= total * sale;
         }
 
         // 4. Připočtení dopravy (pokud je nákup pod 500)
